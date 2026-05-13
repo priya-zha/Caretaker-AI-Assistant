@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CareDesk AI</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --brand:      #0b6fca;
+      --brand-dark: #084fa0;
+      --brand-light:#e8f2fd;
+      --bot-bg:     #f0f4f8;
+      --user-bg:    #0b6fca;
+      --text:       #1a2332;
+      --muted:      #6b7a8d;
+      --border:     #dce3ec;
+      --red:        #e53935;
+      --orange:     #f57c00;
+      --green:      #2e7d32;
+      --radius:     18px;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #f2f5f9;
+      height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* ── Shell ─────────────────────────────────────────── */
+    .shell {
+      width: 100%;
+      max-width: 760px;
+      height: 100dvh;
+      max-height: 860px;
+      background: #fff;
+      border-radius: 24px;
+      box-shadow: 0 8px 40px rgba(0,0,0,.12);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* ── Header ────────────────────────────────────────── */
+    header {
+      background: linear-gradient(135deg, #0b6fca 0%, #0d88e6 100%);
+      padding: 18px 24px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      flex-shrink: 0;
+    }
+    .logo {
+      width: 42px; height: 42px;
+      background: rgba(255,255,255,.2);
+      border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px;
+    }
+    .brand h1 { color: #fff; font-size: 18px; font-weight: 700; letter-spacing: -.3px; }
+    .brand p  { color: rgba(255,255,255,.75); font-size: 12px; margin-top: 1px; }
+
+    .status-pill {
+      margin-left: auto;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+      display: flex; align-items: center; gap: 6px;
+      transition: all .3s;
+    }
+    .status-pill.hidden { opacity: 0; pointer-events: none; }
+    .status-pill.emergency { background: rgba(229,57,53,.25); color: #ffcdd2; }
+    .status-pill.urgent    { background: rgba(245,124, 0,.25); color: #ffe0b2; }
+    .status-pill.routine   { background: rgba(46,125,50,.25);  color: #c8e6c9; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+
+    /* ── Messages area ──────────────────────────────────── */
+    .messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 24px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      scroll-behavior: smooth;
+    }
+    .messages::-webkit-scrollbar { width: 5px; }
+    .messages::-webkit-scrollbar-thumb { background: #d0d8e4; border-radius: 4px; }
+
+    /* ── Message rows ───────────────────────────────────── */
+    .row {
+      display: flex;
+      align-items: flex-end;
+      gap: 10px;
+      max-width: 85%;
+      animation: fadeUp .25s ease both;
+    }
+    .row.bot  { align-self: flex-start; }
+    .row.user { align-self: flex-end; flex-direction: row-reverse; }
+
+    @keyframes fadeUp {
+      from { opacity:0; transform: translateY(8px); }
+      to   { opacity:1; transform: translateY(0); }
+    }
+
+    .avatar {
+      width: 34px; height: 34px; border-radius: 50%;
+      background: var(--brand-light);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px; flex-shrink: 0;
+      border: 2px solid #fff;
+      box-shadow: 0 2px 6px rgba(0,0,0,.1);
+    }
+    .row.user .avatar { background: #e3eaf5; }
+
+    .bubble {
+      padding: 12px 16px;
+      border-radius: var(--radius);
+      font-size: 14.5px;
+      line-height: 1.55;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .row.bot  .bubble {
+      background: var(--bot-bg);
+      color: var(--text);
+      border-bottom-left-radius: 4px;
+    }
+    .row.user .bubble {
+      background: var(--user-bg);
+      color: #fff;
+      border-bottom-right-radius: 4px;
+    }
+
+    /* ── Typing indicator ───────────────────────────────── */
+    .typing { display: flex; gap: 5px; padding: 14px 16px; align-items: center; }
+    .typing span {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: var(--muted);
+      animation: bounce 1.2s infinite;
+    }
+    .typing span:nth-child(2) { animation-delay: .2s; }
+    .typing span:nth-child(3) { animation-delay: .4s; }
+    @keyframes bounce {
+      0%,60%,100% { transform: translateY(0); }
+      30% { transform: translateY(-6px); }
+    }
+
+    /* ── Done banner ────────────────────────────────────── */
+    .done-banner {
+      margin: 8px 20px 0;
+      padding: 12px 18px;
+      background: #e8f5e9;
+      border: 1px solid #a5d6a7;
+      border-radius: 12px;
+      font-size: 13px;
+      color: #2e7d32;
+      display: flex; align-items: center; gap: 8px;
+      animation: fadeUp .3s ease both;
+    }
+    .done-banner.hidden { display: none; }
+
+    /* ── Input area ─────────────────────────────────────── */
+    .input-area {
+      padding: 16px 20px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      gap: 10px;
+      align-items: flex-end;
+      flex-shrink: 0;
+    }
+    textarea {
+      flex: 1;
+      resize: none;
+      border: 1.5px solid var(--border);
+      border-radius: 14px;
+      padding: 11px 16px;
+      font-size: 14.5px;
+      font-family: inherit;
+      color: var(--text);
+      outline: none;
+      transition: border-color .2s;
+      line-height: 1.4;
+      max-height: 120px;
+      overflow-y: auto;
+    }
+    textarea:focus { border-color: var(--brand); }
+    textarea::placeholder { color: var(--muted); }
+    textarea:disabled { background: #f7f9fb; cursor: not-allowed; }
+
+    button.send {
+      width: 44px; height: 44px; border-radius: 12px;
+      background: var(--brand);
+      border: none; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: background .2s, transform .1s;
+      flex-shrink: 0;
+    }
+    button.send:hover:not(:disabled) { background: var(--brand-dark); }
+    button.send:active:not(:disabled) { transform: scale(.94); }
+    button.send:disabled { background: #b0c4de; cursor: not-allowed; }
+    button.send svg { width: 20px; height: 20px; fill: #fff; }
+
+    /* ── New chat button ────────────────────────────────── */
+    .new-chat-btn {
+      margin: 0 20px 16px;
+      padding: 10px;
+      width: calc(100% - 40px);
+      border: 1.5px dashed var(--border);
+      border-radius: 12px;
+      background: transparent;
+      color: var(--muted);
+      font-size: 13.5px;
+      cursor: pointer;
+      transition: all .2s;
+      display: none;
+    }
+    .new-chat-btn.visible { display: block; }
+    .new-chat-btn:hover { border-color: var(--brand); color: var(--brand); background: var(--brand-light); }
+
+    /* ── Disclaimer ─────────────────────────────────────── */
+    .disclaimer {
+      text-align: center;
+      font-size: 11px;
+      color: #a0aab4;
+      padding: 0 20px 10px;
+      flex-shrink: 0;
+    }
+  </style>
+</head>
+<body>
+
+<div class="shell">
+
+  <!-- Header -->
+  <header>
+    <div class="logo">🏥</div>
+    <div class="brand">
+      <h1>CareDesk AI</h1>
+      <p>Health Services Coordination</p>
+    </div>
+    <div class="status-pill hidden" id="statusPill">
+      <div class="dot"></div>
+      <span id="statusLabel"></span>
+    </div>
+  </header>
+
+  <!-- Messages -->
+  <div class="messages" id="messages"></div>
+
+  <!-- Done banner -->
+  <div class="done-banner hidden" id="doneBanner">
+    ✅ Your request has been processed. A confirmation has been sent to your email.
+  </div>
+
+  <!-- New chat -->
+  <button class="new-chat-btn" id="newChatBtn" onclick="resetChat()">+ Start a new conversation</button>
+
+  <!-- Input -->
+  <div class="input-area">
+    <textarea
+      id="input"
+      rows="1"
+      placeholder="Describe your symptoms or ask a question…"
+      autofocus
+    ></textarea>
+    <button class="send" id="sendBtn" onclick="sendMessage()">
+      <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+    </button>
+  </div>
+
+  <p class="disclaimer">CareDesk AI is not a substitute for professional medical advice. In emergencies, call 911.</p>
+</div>
+
+<script>
+  let sessionId = null;
+  let conversationDone = false;
+
+  const messagesEl  = document.getElementById("messages");
+  const inputEl     = document.getElementById("input");
+  const sendBtn     = document.getElementById("sendBtn");
+  const statusPill  = document.getElementById("statusPill");
+  const statusLabel = document.getElementById("statusLabel");
+  const doneBanner  = document.getElementById("doneBanner");
+  const newChatBtn  = document.getElementById("newChatBtn");
+
+  // Auto-resize textarea
+  inputEl.addEventListener("input", () => {
+    inputEl.style.height = "auto";
+    inputEl.style.height = Math.min(inputEl.scrollHeight, 120) + "px";
+  });
+
+  // Send on Enter (Shift+Enter for newline)
+  inputEl.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  });
+
+  function appendMessage(role, text) {
+    const row = document.createElement("div");
+    row.className = `row ${role}`;
+
+    const avatar = document.createElement("div");
+    avatar.className = "avatar";
+    avatar.textContent = role === "bot" ? "🤖" : "🧑";
+
+    const bubble = document.createElement("div");
+    bubble.className = "bubble";
+    bubble.textContent = text;
+
+    row.appendChild(avatar);
+    row.appendChild(bubble);
+    messagesEl.appendChild(row);
+    scrollToBottom();
+    return bubble;
+  }
+
+  function showTyping() {
+    const row = document.createElement("div");
+    row.className = "row bot";
+    row.id = "typingRow";
+
+    const avatar = document.createElement("div");
+    avatar.className = "avatar";
+    avatar.textContent = "🤖";
+
+    const bubble = document.createElement("div");
+    bubble.className = "bubble typing";
+    bubble.innerHTML = "<span></span><span></span><span></span>";
+
+    row.appendChild(avatar);
+    row.appendChild(bubble);
+    messagesEl.appendChild(row);
+    scrollToBottom();
+  }
+
+  function removeTyping() {
+    const el = document.getElementById("typingRow");
+    if (el) el.remove();
+  }
+
+  function scrollToBottom() {
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+  }
+
+  function setUrgency(urgency) {
+    if (!urgency) return;
+    statusPill.classList.remove("hidden", "emergency", "urgent", "routine");
+    const map = {
+      EMERGENCY: ["emergency", "🚨 Emergency"],
+      URGENT:    ["urgent",    "⚠️ Urgent"],
+      ROUTINE:   ["routine",   "📅 Routine"],
+    };
+    const [cls, label] = map[urgency] || ["routine", urgency];
+    statusPill.classList.add(cls);
+    statusLabel.textContent = label;
+  }
+
+  function setInputEnabled(enabled) {
+    inputEl.disabled = !enabled;
+    sendBtn.disabled = !enabled;
+    if (enabled) inputEl.focus();
+  }
+
+  async function sendMessage() {
+    const text = inputEl.value.trim();
+    if (!text || conversationDone) return;
+
+    appendMessage("user", text);
+    inputEl.value = "";
+    inputEl.style.height = "auto";
+    setInputEnabled(false);
+    showTyping();
+
+    let res, data;
+    try {
+      res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: text, session_id: sessionId }),
+      });
+      data = await res.json();
+    } catch (err) {
+      removeTyping();
+      appendMessage("bot", "Could not reach the server. Make sure `python app.py` is still running, then try again.");
+      setInputEnabled(true);
+      return;
+    }
+
+    removeTyping();
+
+    if (!res.ok) {
+      appendMessage("bot", data.reply || `Server error: ${res.statusText}. Please try again.`);
+      setInputEnabled(true);
+      return;
+    }
+
+    sessionId = data.session_id;
+    appendMessage("bot", data.reply);
+
+    if (data.urgency) setUrgency(data.urgency);
+
+    if (data.done) {
+      conversationDone = true;
+      doneBanner.classList.remove("hidden");
+      newChatBtn.classList.add("visible");
+    } else {
+      setInputEnabled(true);
+    }
+  }
+
+  function resetChat() {
+    sessionId = null;
+    conversationDone = false;
+    messagesEl.innerHTML = "";
+    doneBanner.classList.add("hidden");
+    newChatBtn.classList.remove("visible");
+    statusPill.classList.add("hidden");
+    setInputEnabled(true);
+    addWelcome();
+  }
+
+  function addWelcome() {
+    appendMessage(
+      "bot",
+      "Hello! I'm CareDesk AI, your health services coordination assistant.\n\nPlease describe what's bringing you in today — your symptoms, how long you've had them, and anything else that feels relevant. I'm here to help get you the right care."
+    );
+  }
+
+  // Boot
+  addWelcome();
+  setInputEnabled(true);
+</script>
+</body>
+</html>

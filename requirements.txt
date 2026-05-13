@@ -1,0 +1,5 @@
+anthropic
+python-dotenv
+rich
+flask
+cryptography
