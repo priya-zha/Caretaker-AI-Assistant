@@ -1,5 +1,5 @@
 anthropic
 python-dotenv
-rich
 flask
+gunicorn
 cryptography

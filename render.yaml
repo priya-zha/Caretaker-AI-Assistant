@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: caredesk-ai
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app
+    envVars:
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: DATA_ENCRYPTION_KEY
+        sync: false
+      - key: GMAIL_ADDRESS
+        sync: false
+      - key: GMAIL_APP_PASSWORD
+        sync: false
+      - key: ONCALL_EMAIL
+        sync: false
+      - key: CARDIOLOGY_EMAIL
+        sync: false
+      - key: DERMATOLOGY_EMAIL
+        sync: false
+      - key: GENERAL_EMAIL
+        sync: false
